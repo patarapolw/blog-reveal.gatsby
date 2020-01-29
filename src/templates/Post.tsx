@@ -7,35 +7,33 @@ import DefaultLayout from '../layouts/Default'
 
 export const query = graphql`
   query PostFullQuery($slug: String!) {
-    markdownRemark(
-      fields: {slug: {eq: $slug}}
+    file(
+      slug: {eq: $slug}
     ) {
       html
       excerpt
-      frontmatter {
-        title
-        tag
-        image
-      }
-      correctedDateEpoch
+      title
+      tag
+      headerImage
+      epoch
     }
   }
 `
 
 const Post = ({ data }: any) => {
-  const content = data.markdownRemark
+  const content = data.file
 
   return (
     <DefaultLayout
-      title={content.frontmatter.title}
+      title={content.title}
       description={content.excerpt}
-      image={content.frontmatter.image}
-      keywords={content.frontmatter.tag}
+      image={content.headerImage}
+      keywords={content.tag}
     >
       <div className="card">
         <div className="card-content content">
           <PostHeader content={content}/>
-          <h1>{content.frontmatter.title}</h1>
+          <h1>{content.title}</h1>
 
           <div css={css`
             text-align: center;
@@ -46,7 +44,7 @@ const Post = ({ data }: any) => {
               margin-right: -1.5rem;
             }
           `}>
-            <img className="lazyload" data-src={content.frontmatter.image} css={css`
+            <img className="lazyload" data-src={content.headerImage} css={css`
               min-width: 500px;
               width: auto;
 
@@ -59,14 +57,14 @@ const Post = ({ data }: any) => {
           <div dangerouslySetInnerHTML={{ __html: content.html }} />
 
           <div style={{
-            wordBreak: 'break-word'
+            wordBreak: 'break-word',
           }}>
             <span>Tags: </span>
-            { content.frontmatter.tag ? (
+            { content.tag ? (
               <span>
-                { content.frontmatter.tag.map((t: string) => (
+                { content.tag.map((t: string) => (
                   <Link key={t} to={`/tag/${t}`} style={{
-                    marginRight: '0.5em'
+                    marginRight: '0.5em',
                   }}>{t}</Link>
                 )) }
               </span>

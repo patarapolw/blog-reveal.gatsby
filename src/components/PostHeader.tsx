@@ -9,16 +9,16 @@ const PostHeader = ({ content }: any) => (
       site {
         siteMetadata {
           author {
-            avatar
-            login
-            link
+            image
+            name
+            url
           }
         }
       }
     }
   `}
     render={(data) => {
-      const m = content.correctDateEpoch ? moment(content.correctDateEpoch) : null
+      const m = content.epoch ? moment(content.epoch) : null
       const dateString = m ? m.format('LL') : ''
       const { author } = data.site.siteMetadata
 
@@ -27,26 +27,28 @@ const PostHeader = ({ content }: any) => (
           display: 'flex',
           flexDirection: 'row',
           whiteSpace: 'nowrap',
-          overflow: 'auto'
+          overflow: 'auto',
         }}>
           <div style={{
             display: 'flex',
             flexDirection: 'row',
             whiteSpace: 'nowrap',
-            justifyContent: 'center'
+            justifyContent: 'center',
           }}>
-            <a href={author.link} style={{
+            <a href={author.url} style={{
               width: '24px',
-              minWidth: '24px'
+              minWidth: '24px',
             }}>
-              <img src={author.avatar} alt={author.login} style={{
-                borderRadius: '50%'
-              }} />
+              { author.image ? (
+                <img src={author.image} alt={author.name} style={{
+                  borderRadius: '50%',
+                }} />
+              ) : null }
             </a>
-            <a href={author.link}>{author.login}</a>
+            <a href={author.url}>{author.name}</a>
           </div>
           <div style={{
-            flexGrow: 1
+            flexGrow: 1,
           }}></div>
           <div>{dateString}</div>
         </div>

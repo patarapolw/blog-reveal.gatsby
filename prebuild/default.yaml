@@ -1,0 +1,20 @@
+title: ''
+banner: ''
+# tabs:
+#   - name: ''
+#     to: ''
+#     url: ''
+author:
+  image: ''
+  name: ''
+  url: ''
+social:
+  twitter: ''
+fullUrl: ''
+makeHtml:
+  pug: {}       # Pug filters
+  markdown: {}  # Markdown (Showdown.js) extensions
+grayMatter:
+  excerptSeparator: '<!-- excerpt_separator -->'
+comment:
+  disqus: ''    # Disqus shortname

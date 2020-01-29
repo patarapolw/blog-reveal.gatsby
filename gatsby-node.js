@@ -1,12 +1,15 @@
 const path = require('path')
 
 const fs = require('fs-extra')
-const rimraf = require('rimraf')
-const { createFilePath } = require('gatsby-source-filesystem')
 /**
  * I use `momentjs`, because `momentjs` is already included in Gatsby
  */
 const moment = require('moment')
+const matter = require('gray-matter')
+const DataStore = require('nedb-promises')
+
+const config = require('./prebuild')
+const MakeHtml = require('./prebuild/make-html')
 
 /**
  * By default, JavaScript timestamp is in milliseconds,
@@ -18,16 +21,72 @@ const now = +new Date()
 exports.createSchemaCustomization = ({ actions, schema }) => {
   actions.createTypes([
     schema.buildObjectType({
-      name: 'MarkdownRemark',
+      name: 'File',
       interfaces: ['Node'],
       fields: {
-        correctedDateEpoch: {
-          type: 'Float',
-          resolve: (s) => customDateStringToEpoch(s.frontmatter.date)
+        html: {
+          type: 'String',
+          resolve: (s) => {
+            if (s.sourceInstanceName === 'slides') {
+              return matter(fs.readFileSync(s.absolutePath, 'utf8')).content.split(/\n===\n/g).map((ss) => {
+                return ss.split(/\n--\n/g).map((s) => getHtmlFromString(s)).join('\n--\n')
+              }).join('\n==\n')
+            } else {
+              return getHtmlFromPath(s.absolutePath, s.extension)
+            }
+          },
         },
-        correctedSlug: {
+        excerpt: {
+          type: 'String',
+          resolve: (s) => {
+            if (s.sourceInstanceName === 'posts') {
+              const html = (getHtmlFromPath(s.absolutePath, s.extension) || '')
+                .split(config.grayMatter.excerptSeparator)[0].trim()
+              const excerpt = html
+                .substr(0, 500)
+                .replace(/<[^>]*?$/, '').trim()
+
+              return excerpt + (html === excerpt ? '' : '...')
+            }
+            return null
+          },
+        },
+        epoch: {
+          type: 'Float',
+          resolve: (s) => {
+            const { data } = matter(fs.readFileSync(s.absolutePath, 'utf8'))
+            return customDateStringToEpoch(data.date)
+          },
+        },
+        title: {
+          type: 'String',
+          resolve: (s) => {
+            const { data } = matter(fs.readFileSync(s.absolutePath, 'utf8'))
+            return data.title
+          },
+        },
+        headerImage: {
+          type: 'String',
+          resolve: (s) => {
+            if (s.sourceInstanceName === 'posts') {
+              const { data } = matter(fs.readFileSync(s.absolutePath, 'utf8'))
+              return data.image
+            }
+          },
+        },
+        tag: {
+          type: '[String!]',
+          resolve: (s) => {
+            const { data } = matter(fs.readFileSync(s.absolutePath, 'utf8'))
+            return data.tag
+          },
+        },
+        slug: {
           type: 'String!',
-          resolve: (s) => s.fields.slug.replace(/^.*\/(.+?)\//, '$1')
+          resolve: (s) => {
+            const segs = s.absolutePath.split('/')
+            return segs[segs.length - 1].split('.')[0]
+          },
         },
         isPast: {
           type: 'Boolean!',
@@ -35,46 +94,45 @@ exports.createSchemaCustomization = ({ actions, schema }) => {
            * `s.correctedDateEpoch` failed, no matter how I tried
            */
           resolve: (s) => {
-            const epoch = customDateStringToEpoch(s.frontmatter.date)
+            const { data } = matter(fs.readFileSync(s.absolutePath, 'utf8'))
+            const epoch = customDateStringToEpoch(data.date)
             return epoch ? epoch < now : false
-          }
-        }
-      }
-    })
+          },
+        },
+      },
+    }),
   ])
 }
 
 exports.createPages = async ({ graphql, actions, reporter }) => {
   const { createPage } = actions
-  const result = await graphql(
-    `
-      {
-        allMarkdownRemark(
-          sort: { fields: [frontmatter___date], order: DESC },
-          filter: {isPast: {eq: true}}
-        ) {
-          nodes {
-            excerpt(truncate: true, format: HTML)
-            frontmatter {
-              title
-              tag
-              image
-            }
-            fields {
-              slug
-            }
-            correctedDateEpoch
-            correctedSlug
-          }
+  const result = await graphql(`
+    {
+      allFile (
+        filter: {extension: {in: ["md", "pug"]}}
+        sort: {fields: epoch, order: DESC}
+      ) {
+        nodes {
+          absolutePath
+          isPast
+
+          sourceInstanceName
+          excerpt
+          slug
+          epoch
+          title
+          tag
+          headerImage     
         }
       }
-    `)
+    }
+  `)
   if (result.errors) {
     reporter.panicOnBuild('Error while running GraphQL query.')
     return
   }
 
-  const posts = result.data.allMarkdownRemark.nodes
+  const posts = result.data.allFile.nodes
   const postsPerPage = 5
   const numPages = Math.ceil(posts.length / postsPerPage)
   Array.from({ length: numPages }).forEach((_, i) => {
@@ -84,14 +142,14 @@ exports.createPages = async ({ graphql, actions, reporter }) => {
       context: {
         limit: postsPerPage,
         skip: i * postsPerPage,
-        currentPage: i + 1
-      }
+        currentPage: i + 1,
+      },
     })
   })
 
-  const allTags = posts.map((p) => p.frontmatter.tag).filter((p) => p).reduce((a, b) => [...a, ...b])
+  const allTags = posts.map((p) => p.tag).filter((p) => p).reduce((a, b) => [...a, ...b])
   allTags.map((t) => {
-    const taggedPosts = posts.filter((p) => p.frontmatter.tag && p.frontmatter.tag.includes(t))
+    const taggedPosts = posts.filter((p) => p.tag && p.tag.includes(t))
     const numPages = Math.ceil(taggedPosts.length / postsPerPage)
 
     Array.from({ length: numPages }).forEach((_, i) => {
@@ -102,53 +160,47 @@ exports.createPages = async ({ graphql, actions, reporter }) => {
           limit: postsPerPage,
           skip: i * postsPerPage,
           currentPage: i + 1,
-          tag: t
-        }
+          tag: t,
+        },
       })
     })
   })
 
   posts.forEach((p) => {
-    const m = p.correctedDateEpoch ? moment(p.correctedDateEpoch) : null
+    const m = p.epoch ? moment(p.epoch) : null
     const truePath = m
-      ? `/posts/${m.format('YYYY')}/${m.format('MM')}/${p.correctedSlug}`
-      : `/posts/${p.correctedSlug}`
+      ? `/posts/${m.format('YYYY')}/${m.format('MM')}/${p.slug}`
+      : `/posts/${p.slug}`
 
     createPage({
       path: truePath,
       component: path.resolve('./src/templates/Post.tsx'),
       context: {
-        slug: p.fields.slug
-      }
+        slug: p.slug,
+      },
     })
   })
 
-  fs.writeFileSync(path.join(__dirname, 'public/search.json'), JSON.stringify(posts))
-}
-
-exports.onCreateNode = ({ node, actions, getNode }) => {
-  const { createNodeField } = actions
-  if (node.internal.type === 'MarkdownRemark') {
-    const value = createFilePath({ node, getNode })
-    createNodeField({
-      name: 'slug',
-      node,
-      value
-    })
+  if (fs.existsSync(path.join(__dirname, 'api/search.json'))) {
+    fs.unlinkSync(path.join(__dirname, 'api/search.json'))
   }
+
+  const db = new DataStore(path.join(__dirname, 'api/search.json'))
+
+  await Promise.all(posts.map(async (p) => {
+    try {
+      const { absolutePath: _, isPast: __, ...el } = p
+      await db.insert(el)
+    } catch (e) {
+      console.error(e)
+    }
+  }))
 }
 
 exports.onPostBuild = () => {
-  rimraf.sync(
-    path.join(process.env.ROOT, 'dist')
-  )
-  fs.copySync(
-    path.join(__dirname, 'public'),
-    path.join(process.env.ROOT, 'dist')
-  )
   fs.copySync(
     path.join(process.env.ROOT, 'media'),
-    path.join(process.env.ROOT, 'dist/media')
+    path.join(__dirname, 'public/media'),
   )
 }
 
@@ -172,7 +224,7 @@ function customDateStringToEpoch (date) {
     'YYYY-MM-DD HH:MM ZZ',
     'YYYY-MM-DD ZZ',
     'YYYY-MM-DD HH:MM',
-    'YYYY-MM-DD'
+    'YYYY-MM-DD',
   ])
 
   if (m.isValid()) {
@@ -189,4 +241,27 @@ function customDateStringToEpoch (date) {
   }
 
   return null
+}
+
+/**
+ *
+ * @param {string} p absolute path
+ * @param {string} ext extension
+ */
+function getHtmlFromPath (p, ext) {
+  if (['md', 'pug'].includes(ext)) {
+    const { content } = matter(fs.readFileSync(p, 'utf8'))
+    return getHtmlFromString(content, ext)
+  }
+  return null
+}
+
+/**
+ *
+ * @param {string} s string
+ * @param {string} [ext] extension
+ */
+function getHtmlFromString (s, ext) {
+  const makeHtml = new MakeHtml(config.makeHtml)
+  return makeHtml.parse(s, ext || 'md')
 }

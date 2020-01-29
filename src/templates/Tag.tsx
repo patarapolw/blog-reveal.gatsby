@@ -5,29 +5,22 @@ import PostQuery from '../components/PostQuery'
 
 export const query = graphql`
   query TagPagedQuery($skip: Int!, $tag: String!) {
-    allMarkdownRemark(
-      sort: {fields: frontmatter___date, order: DESC},
+    allFile(
+      sort: {fields: epoch, order: DESC},
       filter: {
-        isPast: {eq: true},
-        frontmatter: {tag: {in: [$tag]}}
+        isPast: {eq: true}
+        tag: {in: [$tag]}
       },
       limit: 5,
       skip: $skip
     ) {
-      edges {
-        node {
-          excerpt(truncate: true, format: HTML)
-          frontmatter {
-            title
-            tag
-            image
-          }
-          fields {
-            slug
-          }
-          correctedDateEpoch
-          correctedSlug
-        }
+      nodes {
+        excerpt
+        title
+        tag
+        headerImage
+        slug
+        epoch
       }
       totalCount
     }
@@ -35,7 +28,7 @@ export const query = graphql`
 `
 
 const Index = ({ data, pageContext }: any) => (
-  <PostQuery defaults={data.allMarkdownRemark} currentPage={pageContext.currentPage} tag={pageContext.tag} />
+  <PostQuery defaults={data.allFile} currentPage={pageContext.currentPage} tag={pageContext.tag} />
 )
 
 export default Index

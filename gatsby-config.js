@@ -1,46 +1,57 @@
+const fs = require('fs')
 const path = require('path')
+const { execSync } = require('child_process')
 
-const yaml = require('js-yaml')
+const config = require('./prebuild')
 
-const siteMetadata = require('./src/prebuild')
+try {
+  const repoUrl = execSync('git config --get remote.origin.url', {
+    cwd: process.env.ROOT,
+  }).toString().trim()
+
+  const [_, repoAuthor, repoName] = /github\.com\/([^/]+)\/([^/]+)\.git$/.exec(config.repoUrl) || []
+
+  Object.assign(config, {
+    repo: {
+      url: repoUrl,
+      author: repoAuthor,
+      name: repoName,
+    },
+  })
+} catch (e) {}
 
 module.exports = {
-  pathPrefix: siteMetadata.pathPrefix || '',
-  siteMetadata,
+  siteMetadata: config,
   plugins: [
     'gatsby-plugin-react-helmet',
     'gatsby-plugin-typescript',
-    'gatsby-plugin-sharp',
-    {
-      resolve: 'gatsby-transformer-remark',
-      options: {
-        excerpt_separator: '<!-- excerpt_separator -->',
-        engines: {
-          yaml: {
-            parse: (s) => yaml.safeLoad(s, {
-              schema: yaml.JSON_SCHEMA
-            })
-          }
-        },
-        plugins: [
-          'gatsby-remark-images',
-          'gatsby-remark-lazy-load'
-        ]
-      }
-    },
     {
       resolve: 'gatsby-source-filesystem',
       options: {
-        path: path.join(process.env.ROOT, 'data/posts'),
-        name: 'posts'
+        path: path.resolve(process.env.ROOT, 'posts'),
+        name: 'posts',
+      },
+    },
+    ...(() => {
+      const slides = path.resolve(process.env.ROOT, 'slides')
+      if (fs.existsSync(slides)) {
+        return [{
+          resolve: 'gatsby-source-filesystem',
+          options: {
+            path: slides,
+            name: 'slides',
+          },
+        }]
       }
-    }
-    // {
-    //   resolve: 'gatsby-source-filesystem',
-    //   options: {
-    //     path: path.join(process.env.ROOT, 'data/hidden'),
-    //     name: 'hidden'
-    //   }
-    // }
-  ]
+      return []
+    })(),
+    ...(config.comment.disqus ? [
+      {
+        resolve: 'gatsby-plugin-disqus',
+        options: {
+          shortname: config.disqus,
+        },
+      },
+    ] : []),
+  ],
 }

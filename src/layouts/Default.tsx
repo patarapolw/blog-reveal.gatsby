@@ -1,33 +1,26 @@
 import React, { useState } from 'react'
 import { Helmet } from 'react-helmet'
 import { graphql, Link, StaticQuery } from 'gatsby'
-import { navigate, globalHistory } from '@reach/router'
+import { navigate } from '@reach/router'
 
 const DefaultLayout = ({
   children,
-  title, description, image, keywords
+  title, description, image, keywords,
 }: any) => (
   <StaticQuery
     query={graphql`
     query DefaultLayout {
-      allTags: allMarkdownRemark(
+      allTags: allFile(
         filter: {isPast: {eq: true}}
       ) {
         nodes {
-          frontmatter {
-            tag
-          }
+          tag
         }
       }
       site {
         siteMetadata {
           title
           banner
-          tabs {
-            name
-            to
-            url
-          }
           social {
             twitter
           }
@@ -51,7 +44,7 @@ const DefaultLayout = ({
         <section>
           <Helmet>
             <meta charSet="utf8"/>
-            <link rel="icon" href={`${globalHistory.location.origin}/media/favicon.ico`} />
+            <link rel="icon" href={'/media/favicon.ico'} />
             <link rel="canonical" href={ siteMetadata.fullUrl } />
             <meta name="viewport" content="width=device-width, initial-scale=1" />
             <title>{ trueTitle }</title>
@@ -86,7 +79,7 @@ const DefaultLayout = ({
 
             <div className={`navbar-menu${isActive ? ' is-active' : ''}`}>
               <div className="navbar-start">
-                { siteMetadata.tabs.map((t: any) => {
+                { (siteMetadata.tabs || []).map((t: any) => {
                   return t.to ? (
                     <Link className="navbar-item" to={t.to} key={t.name}>{t.name}</Link>
                   ) : (
@@ -101,7 +94,7 @@ const DefaultLayout = ({
                   navigate(`/?q=${encodeURIComponent(q)}`)
                 }} style={{
                   margin: '5px',
-                  marginRight: '2em'
+                  marginRight: '2em',
                 }}>
                   <div className="control">
                     <input className="input is-rounded" placeholder="Search"
@@ -113,7 +106,7 @@ const DefaultLayout = ({
           </nav>
 
           <section className="container" style={{
-            marginTop: '60px'
+            marginTop: '60px',
           }}>
             <div className="columns">
               <main className="column is-8">
@@ -121,7 +114,7 @@ const DefaultLayout = ({
               </main>
               <aside className="column">
                 <div className="card" style={{
-                  margin: '10px'
+                  margin: '10px',
                 }}>
                   <header className="card-header">
                     <h3 className="card-header-title">
@@ -129,16 +122,15 @@ const DefaultLayout = ({
                     </h3>
                   </header>
                   <div className="card-content" style={{
-                    whiteSpace: 'pre-wrap'
+                    whiteSpace: 'pre-wrap',
                   }}>
                     { (() => {
                       const tagCountDict: Record<string, number> = {}
                       const cSize = 0.6
 
                       data.allTags.nodes.forEach((n: any) => {
-                        const { tag } = n.frontmatter
-                        if (tag) {
-                          tag.forEach((t: string) => {
+                        if (n.tag) {
+                          n.tag.forEach((t: string) => {
                             tagCountDict[t] = tagCountDict[t] || 0
                             tagCountDict[t]++
                           })
@@ -171,7 +163,7 @@ const DefaultLayout = ({
                                   return `${1.5 * cSize}em`
                                 }
                                 return `${cSize}em`
-                              })()
+                              })(),
                             }} to={`/tag/${t}`}>
                               {t}
                             </Link>
@@ -182,13 +174,15 @@ const DefaultLayout = ({
                   </div>
                 </div>
 
-                <div className="card" style={{
-                  margin: '10px'
-                }}>
-                  <a className="twitter-timeline" data-height="800" href={`https://twitter.com/${twitter}`}>
-                    Tweets by { twitter }
-                  </a>
-                </div>
+                { twitter ? (
+                  <div className="card" style={{
+                    margin: '10px',
+                  }}>
+                    <a className="twitter-timeline" data-height="800" href={`https://twitter.com/${twitter}`}>
+                      Tweets by { twitter }
+                    </a>
+                  </div>
+                ) : null }
               </aside>
             </div>
           </section>

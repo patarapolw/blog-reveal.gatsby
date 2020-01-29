@@ -5,11 +5,11 @@ import moment from 'moment'
 
 import PostHeader from './PostHeader'
 // eslint-disable-next-line no-unused-vars
-import { IEdge } from './PostQuery'
+import { INode } from './PostQuery'
 
-const PostTeaser = ({ content }: { content: IEdge }) => (
+const PostTeaser = ({ content }: { content: INode }) => (
   <div className="card" style={{
-    margin: '10px'
+    margin: '10px',
   }}>
     <div className="card-content">
       <PostHeader content={content} />
@@ -21,7 +21,7 @@ const PostTeaser = ({ content }: { content: IEdge }) => (
           overflow: auto;
         }
       `}>
-        { content.node.frontmatter.image ? (
+        { content.headerImage ? (
           <div css={css`
             width: calc(100% + 3rem);
             margin-top: 1rem;
@@ -37,22 +37,22 @@ const PostTeaser = ({ content }: { content: IEdge }) => (
               margin: 1rem;
             }
           `}>
-            <img data-src={content.node.frontmatter.image} alt={content.node.frontmatter.title} className="lazyload" />
+            <img data-src={content.headerImage} alt={content.title} className="lazyload" />
           </div>
         ) : null }
-        <h2 className="title">{ content.node.frontmatter.title }</h2>
-        <div className="content" dangerouslySetInnerHTML={{ __html: content.node.excerpt }} />
+        <h2 className="title">{ content.title }</h2>
+        <div className="content" dangerouslySetInnerHTML={{ __html: content.excerpt }} />
       </div>
 
       <div style={{
         display: 'flex',
-        justifyContent: 'flex-end'
+        justifyContent: 'flex-end',
       }}>
         <Link className="button is-danger is-outlined" to={(() => {
-          const m = content.node.correctedDateEpoch ? moment(content.node.correctedDateEpoch) : null
+          const m = content.epoch ? moment(content.epoch) : null
           return m
-            ? `/posts/${m.format('YYYY')}/${m.format('MM')}/${content.node.correctedSlug}`
-            : `/posts/${content.node.correctedSlug}`
+            ? `/posts/${m.format('YYYY')}/${m.format('MM')}/${content.slug}`
+            : `/posts/${content.slug}`
         })()}>Read More</Link>
       </div>
     </div>

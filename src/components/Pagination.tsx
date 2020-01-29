@@ -15,7 +15,7 @@ const Pagination = ({ current, totalPosts, baseUrl }: any) => {
 
   return (
     <nav className="pagination" role="navigation" aria-label="pagination" style={{
-      margin: '10px'
+      margin: '10px',
     }}>
       { prevCount > 0 ? (
         <Link to={formatTo(current - 1)} className="pagination-previous">Previous</Link>
