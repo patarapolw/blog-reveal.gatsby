@@ -118,6 +118,7 @@ exports.createPages = async ({ graphql, actions, reporter }) => {
 
           sourceInstanceName
           excerpt
+          html
           slug
           epoch
           title
@@ -186,11 +187,19 @@ exports.createPages = async ({ graphql, actions, reporter }) => {
   }
 
   const db = new DataStore(path.join(__dirname, 'api/search.json'))
+  await Promise.all([
+    db.ensureIndex({ fieldName: 'excerpt' }),
+    db.ensureIndex({ fieldName: 'title' }),
+    db.ensureIndex({ fieldName: 'slug' }),
+  ])
 
   await Promise.all(posts.map(async (p) => {
     try {
       const { absolutePath: _, isPast: __, ...el } = p
-      await db.insert(el)
+      await db.insert({
+        ...el,
+        date: new Date(el.epoch),
+      })
     } catch (e) {
       console.error(e)
     }
@@ -198,10 +207,12 @@ exports.createPages = async ({ graphql, actions, reporter }) => {
 }
 
 exports.onPostBuild = () => {
-  fs.copySync(
-    path.join(process.env.ROOT, 'media'),
-    path.join(__dirname, 'public/media'),
-  )
+  if (fs.existsSync(path.join(process.env.ROOT, 'media'))) {
+    fs.copySync(
+      path.join(process.env.ROOT, 'media'),
+      path.join(__dirname, 'public/media'),
+    )
+  }
 }
 
 exports.onCreateDevServer = ({ app }) => {

@@ -1,0 +1,8 @@
+{
+  "version": 2,
+  "functions": {
+    "api/search.ts": {
+      "includeFiles": "api/search.json"
+    }
+  }
+}

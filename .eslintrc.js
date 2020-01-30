@@ -26,7 +26,7 @@ module.exports = {
   ],
   rules: {
     'comma-dangle': ['error', 'always-multiline'],
-    'no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+    'no-unused-vars': 0,
   },
   settings: {
     react: {
