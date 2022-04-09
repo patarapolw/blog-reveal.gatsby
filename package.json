@@ -40,7 +40,7 @@
     "gray-matter": "^4.0.2",
     "hyperscript": "^2.0.2",
     "lazysizes": "^5.2.0",
-    "moment": "^2.24.0",
+    "moment": "^2.29.2",
     "nanoid": "^2.1.10",
     "pug": "^2.0.4",
     "react": "^16.12.0",
